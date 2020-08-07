@@ -1,2 +1,2 @@
-# wallace-tree-verilogHDL-code
+# Wallace Tree VerilogHDL Code
 这个工具用于自动生成一个Wallace Tree算法VerilogHDL代码实例，并附带了一些配套的工具和一个完整的VerilogHDL描述的乘法器。
