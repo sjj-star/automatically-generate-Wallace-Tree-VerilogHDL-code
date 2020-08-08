@@ -18,7 +18,7 @@
 此文件是本工具的主要源代码。它需要一组数据输入，这组数据是要压缩的bit阵列中每一列的数量。它得到这组输入后，会在终端打印出一些信息包含生成的目标代码。  
 (**Note:** 此源代码使用了`typeof`关键字，详见[GUN C Extensions](https://gcc.gnu.org/onlinedocs/gcc-4.6.2/gcc/C-Extensions.html#C-Extensions)，所以对于某些不支持此特性的C编译器可能会报错)  
 工具使用如下：  
-`generate_wallacetree_verilogcode 2 1 3 2 4 3 5 4 5 5 4 4 3 3 2 2`
+`generate_wallacetree_verilogcode 2 1 3 2 4 3 5 4 5 5 4 4 3 3 2 2`  
 它将输出如下信息：  
 (```)
 this is input nets list :
