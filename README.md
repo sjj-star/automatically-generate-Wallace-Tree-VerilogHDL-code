@@ -102,7 +102,7 @@ wire    s_5_0,    s_5_1,    s_5_2,    s_6_0,    s_6_1,    s_6_2;
 此源码是匹配**multer.v**中`booth_coder`模块输出的压缩bit阵列，由源码中的`#define width 32`自动计算每一列bit的数量。以便直接提供给其他工具使用。
 ## list.h
 本头文件包含一个链表数据结构以及相关算法。
-# 在Vivado平台下与其IP对比
+# 在Vivado平台下与乘法器IP对比
 这里使用Xilinx Vivado提供的乘法器IP核，分别有LUT和DSP实现的32bit有符号乘法器以及本工具生成的32bit有/无符号乘法器。对比了单周期和两级流水线下的LUT/DSP/FF使用数量，以及在时钟周期为10ns下的WNS值。使用的器件平台是：xc7a200tfbg676-2，测试方法是在模块的输入和输外加入一组寄存器，构成一个顶层模块进行综合/实现。
 ## 单周期
 |method|WNS/ns|LUTs|DSPs|FFs|
