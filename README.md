@@ -16,4 +16,68 @@
 乘法器的顶层模块，将上面的模块组合起来，只需要将最终压缩器输出的两个结果进行加法运算即可得到最终输出。
 ## generate\_wallacetree\_verilogcode.c
 此文件是本工具的主要源代码。它需要一组数据输入，这组数据是要压缩的bit阵列中每一列的数量。它得到这组输入后，会在终端打印出一些信息包含生成的目标代码。  
-(**Note:** 此源代码使用了`typeof`关键字，详见[GUN C Extensions](https://gcc.gnu.org/onlinedocs/gcc-4.6.2/gcc/C-Extensions.html#C-Extensions),所以对于某些不支持此特性的C编译器可能会报错)
+(**Note:** 此源代码使用了`typeof`关键字，详见[GUN C Extensions](https://gcc.gnu.org/onlinedocs/gcc-4.6.2/gcc/C-Extensions.html#C-Extensions)，所以对于某些不支持此特性的C编译器可能会报错)  
+工具使用如下：  
+`generate_wallacetree_verilogcode 2 1 3 2 4 3 5 4 5 5 4 4 3 3 2 2`
+它将输出如下信息：  
+(```)
+this is input nets list :
+ 0:    s_0_0    s_0_1 
+ 1:    s_1_0 
+ 2:    s_2_0    s_2_1    s_2_2 
+ 3:    s_3_0    s_3_1 
+ 4:    s_4_0    s_4_1    s_4_2    s_4_3 
+ 5:    s_5_0    s_5_1    s_5_2 
+ 6:    s_6_0    s_6_1    s_6_2    s_6_3    s_6_4 
+ 7:    s_7_0    s_7_1    s_7_2    s_7_3 
+ 8:    s_8_0    s_8_1    s_8_2    s_8_3    s_8_4 
+ 9:    s_9_0    s_9_1    s_9_2    s_9_3    s_9_4 
+10:   s_10_0   s_10_1   s_10_2   s_10_3 
+11:   s_11_0   s_11_1   s_11_2   s_11_3 
+12:   s_12_0   s_12_1   s_12_2 
+13:   s_13_0   s_13_1   s_13_2 
+14:   s_14_0   s_14_1 
+15:   s_15_0   s_15_1 
+the number of all nets: 52
+
+compress stage 0: 2 2 3 3 4 4 5 5 4 5 3 4 2 3 1 2 
+compress stage 1: 2 2 2 3 2 2 3 3 2 2 2 3 2 1 2 1 
+compress stage 2: 2 2 2 2 2 2 2 2 2 2 2 2 1 2 1 1 
+the numbers of components: 29
+
+          module instance group
+             TOP   Inputs 0
+      half_adder     u0_1 1
+  compressor_3_2     u1_2 1
+      half_adder     u0_3 1
+  compressor_3_2     u1_4 1
+  compressor_3_2     u1_5 1
+  compressor_4_2     u2_6 1
+  compressor_4_2     u2_7 1
+  compressor_4_2     u2_8 1
+  compressor_4_2     u2_9 1
+  compressor_4_2    u2_10 1
+  compressor_4_2    u2_11 1
+  compressor_3_2    u1_12 1
+  compressor_3_2    u1_13 1
+      half_adder    u0_14 1
+      half_adder    u0_15 1
+      half_adder    u0_16 2
+      half_adder    u0_17 2
+  compressor_3_2    u1_18 2
+      half_adder    u0_19 2
+      half_adder    u0_20 2
+      half_adder    u0_21 2
+  compressor_3_2    u1_22 2
+  compressor_3_2    u1_23 2
+      half_adder    u0_24 2
+      half_adder    u0_25 2
+  compressor_3_2    u1_26 2
+      half_adder    u0_27 2
+      half_adder    u0_28 2
+
+/* Input nets */
+wire    s_0_0,    s_0_1,    s_1_0,    s_2_0,    s_2_1,    s_2_2;  
+wire    s_3_0,    s_3_1,    s_4_0,    s_4_1,    s_4_2,    s_4_3;  
+wire    s_5_0,    s_5_1,    s_5_2,    s_6_0,    s_6_1,    s_6_2; 
+(```)
