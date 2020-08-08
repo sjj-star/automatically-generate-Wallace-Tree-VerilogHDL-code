@@ -20,7 +20,7 @@
 工具使用如下：  
 `generate_wallacetree_verilogcode 2 1 3 2 4 3 5 4 5 5 4 4 3 3 2 2`  
 它将输出如下信息：  
-(```)
+```
 this is input nets list :
  0:    s_0_0    s_0_1 
  1:    s_1_0 
@@ -80,4 +80,4 @@ the numbers of components: 29
 wire    s_0_0,    s_0_1,    s_1_0,    s_2_0,    s_2_1,    s_2_2;  
 wire    s_3_0,    s_3_1,    s_4_0,    s_4_1,    s_4_2,    s_4_3;  
 wire    s_5_0,    s_5_1,    s_5_2,    s_6_0,    s_6_1,    s_6_2; 
-(```)
+```
