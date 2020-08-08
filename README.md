@@ -1,5 +1,5 @@
 # Automatically Generate Wallace Tree VerilogHDL Code
-这个工具用于自动生成一个Wallace Tree算法VerilogHDL代码实例，并附带了一些配套的工具和一个完整的VerilogHDL描述的乘法器。
+本工具用于自动生成一个Wallace Tree算法VerilogHDL代码实例，并附带了一些配套的工具和一个完整的VerilogHDL描述的乘法器。
 ## multer.v
 此文件是一个使用VerilogHDL描述的纯组合逻辑乘法器。其中它包含4-2压缩器，3-2压缩器，半加器，支持有符号/无符号数的booth编码器，与booth编码器输出接口匹配的8/16/32bit Wallace Tree算法压缩器（完全由本工具生成）。这些模块组合成一个同时支持有符号/无符号数乘法器。
 ### half_adder
