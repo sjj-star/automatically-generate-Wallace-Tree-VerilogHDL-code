@@ -2195,7 +2195,8 @@ endgenerate
 function [255:0] sign_sum(input integer n);
 integer i;
 begin
-	for (sign_sum=0, i=0; i<n; i=i+2)
+	sign_sum = 256'b0;
+	for (i=0; i<n; i=i+2)
 		sign_sum = sign_sum + ({256{1'b1}} << (n-i-2));
 	sign_sum = sign_sum << 3;
 end
