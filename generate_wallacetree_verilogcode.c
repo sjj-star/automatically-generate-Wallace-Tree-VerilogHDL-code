@@ -6,7 +6,7 @@
 
 #define MAX_NAME_LEN 32
 
-struct module_obj *all_graph[1024];
+struct module_obj *all_graph[1024*40];
 
 #define INPUTS 0
 #define OUTPUTS 1
@@ -154,13 +154,12 @@ void generate_code(struct module_obj *graph[], int nums, struct list_head net[],
     list_for_from_node(&graph[0]->outports, &graph[0]->outports, op_list, w) {
         if(i%6==0)
             printf("wire ");
-        printf("%8s, ", w->name);
-        if(i%6==5)
-            printf("\b\b;  \n");
+        if(i%6==5 || IsLast(&w->op_list, &graph[0]->outports))
+            printf("%8s;\n", w->name);
+        else
+            printf("%8s, ", w->name);
         i++;
     }
-    if(i%6!=5)
-        printf("\b\b;  \n");
 
     printf("\n"
     "/*\n"
@@ -173,12 +172,13 @@ void generate_code(struct module_obj *graph[], int nums, struct list_head net[],
     for(i=1, start=1, id=1; i<nums+1; start = i, id = graph[i]->group) {
         printf("\n");
         for(; id == graph[i]->group && i<nums+1; i++) {
-            printf("/* %s Output nets */\nwire ", graph[i]->instance_name);
-            list_for_from_node(&graph[i]->outports, &graph[i]->outports, op_list, w) {
-                if(*(w->name)!='\0')
-                    printf("%8s,", w->name);
+            w = list_node((&graph[i]->outports)->next, op_list, w);
+            printf("/* %s Output nets */\nwire %s", graph[i]->instance_name, w->name);
+            list_for_from_node(&graph[i]->outports, &w->op_list, op_list, w) {
+                if(*(w->name) != '\0')
+                    printf(", %8s", w->name);
             }
-            printf("\b;  \n");
+            printf(";\n");
         }
         printf("\n/* compress stage %d */\n", id);
         for(i=start; id == graph[i]->group && i<nums+1; i++, n=0) {
@@ -189,9 +189,11 @@ void generate_code(struct module_obj *graph[], int nums, struct list_head net[],
                 printf(".%s(%s), ", name[n++], w->name);
             }
             list_for_from_node(&graph[i]->outports, &graph[i]->outports, op_list, w) {
-                printf(".%s(%s), ", name[n++], w->name);
+                if(IsLast(&w->op_list, &graph[i]->outports))
+                    printf(".%s(%s));\n", name[n++], w->name);
+                else
+                    printf(".%s(%s), ", name[n++], w->name);
             }
-            printf("\b\b); \n");
         }
     }
 

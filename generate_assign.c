@@ -49,39 +49,45 @@ void auto_assign(struct list_head net[], int width)
     printf("assign {\n");
     for (i=width-2, j=0; i>=0; i-=2, j++) {
         w = list_prev_node(&net[i], n_list, w);
-        printf("%8s, ", w->name);
+        if (i - 2 < 0)
+            printf("%8s\n", w->name);
+        else {
+            printf("%8s, ", w->name);
+            if (j % 6 == 5)
+                printf("\n");
+        }
         Delete(&w->n_list);
-        if (j%6==5)
-            printf("\n");
     }
-    if (j%6!=5)
-        printf("\b\b  \n");
     printf("} = carry;\n\n");
 
     for(i=0; i<width/2; i++) {
         printf("assign {\n");
         for(j=(width+2)+(i*2)-1, n=0; j>=(i*2); j--, n++) {
             w = list_next_node(&net[j], n_list, w);
-            printf("%8s, ", w->name);
+            if (j-1 < i*2)
+                printf("%8s\n", w->name);
+            else {
+                printf("%8s, ", w->name);
+                if (n % 6 == 5)
+                    printf("\n");
+            }
             Delete(&w->n_list);
-            if (n%6==5)
-                printf("\n");
         }
-        if (n%6!=5)
-            printf("\b\b  \n");
         printf("} = partial_products[(width+2)*(%d+1)-1:(width+2)*%d];\n\n", i, i);
     }
 
     printf("assign {\n");
     for(i=width*2-1, n=0; i>=width; i--, n++) {
         w = list_next_node(&net[i], n_list, w);
-        printf("%8s, ", w->name);
+        if (i - 1 < width)
+            printf("%8s\n", w->name);
+        else {
+            printf("%8s, ", w->name);
+            if (n % 6 == 5)
+                printf("\n");
+        }
         Delete(&w->n_list);
-        if (n%6==5)
-            printf("\n");
     }
-    if (n%6!=5)
-        printf("\b\b  \n");
     printf("} = partial_products[(width+2)*(width/2+1)-1:(width+2)*width/2+2];\n\n");
 }
 
