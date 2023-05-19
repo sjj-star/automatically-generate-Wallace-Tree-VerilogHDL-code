@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <math.h>
 #include "list.h"
 
 #define MAX_NAME_LEN 32
@@ -15,60 +16,49 @@ struct module_obj *all_graph[1024*40];
 #define HALF_ADDER 0
 #define COMPRESSOR_3_2 1
 #define COMPRESSOR_4_2 2
-struct
+struct module_lib
 {
     const char *name;
-    const char *inports[2];
-    const char *outports[2];
-} m_0;
-struct
-{
-    const char *name;
-    const char *inports[3];
-    const char *outports[2];
-} m_1;
-struct
-{
-    const char *name;
-    const char *inports[5];
-    const char *outports[3];
-} m_2;
-
-void *module_lib[3] = {&m_0, &m_1, &m_2};
-
-#define module_info(id) ((const char **)(module_lib[id]+8))
+    const char **inports;
+    const char **outports;
+    int ins;
+    int outs;
+    float **io_latency;
+};
+struct module_lib module_libs[4];
 /* module library end */
 
 struct wire
 {
     int component_id;
     char *name;
+	struct list_head n_list;
+	struct list_head ip_list;
     struct list_head op_list;
-    union {
-        struct list_head n_list;
-        struct list_head ip_list;
-    };
+    float delay;
 };
 
 struct module_obj
 {
-    const char *module_name;
+    struct module_lib *lib;
     int id;
     int group;
     char *instance_name;
     struct list_head inports;
     struct list_head outports;
-    int indegree;
 };
 
-struct list_head Queue1, Queue2;
+typedef struct {
+    struct list_head head;
+    int len;
+} Queue;
 
 int max(int a[], int len);
-void Initqueue(struct list_head *P);
-int IsEmpty_queue(struct list_head *listhead);
-void enqueue(struct list_head *listhead, struct wire *entry);
-struct wire *dequeue(struct list_head *listhead);
+void Initqueue(Queue *Q);
+void enqueue(Queue *Q, struct wire *entry);
+struct wire *dequeue(Queue *Q);
 struct module_obj *instance_module(int module, int component_id);
+void update_out_delay(struct module_obj *obj);
 int init_netlist(struct list_head net[], int netnums[], int width);
 struct module_obj *init_top(struct list_head net[], int width, int type);
 int wallacetree_graph(struct list_head net[], int netnums[], int width);
@@ -79,8 +69,9 @@ void auto_assign(struct list_head net[], int width);
 int main(int argc, const char *argv[])
 {
     int i, nums;
-    int width=argc-1, *netnums=malloc(width*sizeof(int));
-    struct list_head net[width];
+    int width=argc-1;
+	int *netnums = (int *)malloc(width*sizeof(int));
+    struct list_head *net = (struct list_head *)malloc(width*sizeof(struct list_head));
     struct wire *in;
 
     if(width==0) {
@@ -92,32 +83,75 @@ int main(int argc, const char *argv[])
     }
 
 /* Initialize module library start */
-    m_0.name = "half_adder";
-    m_0.inports[0] = "a";
-    m_0.inports[1] = "b";
-    m_0.outports[0] = "o";
-    m_0.outports[1] = "cout";
+    module_libs[0].name = "half_adder";
+    module_libs[0].ins = 2;
+    module_libs[0].outs = 2;
+    module_libs[0].inports = (const char **)malloc(module_libs[0].ins*sizeof(const char *));
+    module_libs[0].inports[0] = "a";
+    module_libs[0].inports[1] = "b";
+    module_libs[0].outports = (const char **)malloc(module_libs[0].outs*sizeof(const char *));
+    module_libs[0].outports[0] = "o";
+    module_libs[0].outports[1] = "cout";
+    module_libs[0].io_latency = (float **)malloc(module_libs[0].ins*sizeof(float *));
+    for(i=0; i<module_libs[0].ins; i++)
+        module_libs[0].io_latency[i] = (float *)malloc(module_libs[0].outs*sizeof(float));
+    module_libs[0].io_latency[0][0] = 50.0;
+    module_libs[0].io_latency[0][1] = 39.0;
+    module_libs[0].io_latency[1][0] = 54.0;
+    module_libs[0].io_latency[1][1] = 41.0;
 
-    m_1.name = "compressor_3_2";
-    m_1.inports[0] = "a";
-    m_1.inports[1] = "b";
-    m_1.inports[2] = "cin";
-    m_1.outports[0] = "o";
-    m_1.outports[1] = "cout";
+    module_libs[1].name = "compressor_3_2";
+    module_libs[1].ins = 3;
+    module_libs[1].outs = 2;
+    module_libs[1].inports = (const char **)malloc(module_libs[1].ins*sizeof(const char *));
+    module_libs[1].inports[0] = "a";
+    module_libs[1].inports[1] = "b";
+    module_libs[1].inports[2] = "cin";
+    module_libs[1].outports = (const char **)malloc(module_libs[1].outs*sizeof(const char *));
+    module_libs[1].outports[0] = "o";
+    module_libs[1].outports[1] = "cout";
+    module_libs[1].io_latency = (float **)malloc(module_libs[1].ins*sizeof(float *));
+    for(i=0; i<module_libs[1].ins; i++)
+        module_libs[1].io_latency[i] = (float *)malloc(module_libs[1].outs*sizeof(float));
+    module_libs[1].io_latency[0][0] = 71.0;
+    module_libs[1].io_latency[0][1] = 62.0;
+    module_libs[1].io_latency[1][0] = 75.0;
+    module_libs[1].io_latency[1][1] = 70.0;
+    module_libs[1].io_latency[2][0] = 77.0;
+    module_libs[1].io_latency[2][1] = 68.0;
 
-    m_2.name = "compressor_4_2";
-    m_2.inports[0] = "a";
-    m_2.inports[1] = "b";
-    m_2.inports[2] = "c";
-    m_2.inports[3] = "d";
-    m_2.inports[4] = "cin";
-    m_2.outports[0] = "o";
-    m_2.outports[1] = "co";
-    m_2.outports[2] = "cout";
+    module_libs[2].name = "compressor_4_2";
+    module_libs[2].ins = 5;
+    module_libs[2].outs = 3;
+    module_libs[2].inports = (const char **)malloc(module_libs[2].ins*sizeof(const char *));
+    module_libs[2].inports[0] = "a";
+    module_libs[2].inports[1] = "b";
+    module_libs[2].inports[2] = "c";
+    module_libs[2].inports[3] = "d";
+    module_libs[2].inports[4] = "cin";
+    module_libs[2].outports = (const char **)malloc(module_libs[2].outs*sizeof(const char *));
+    module_libs[2].outports[0] = "o";
+    module_libs[2].outports[1] = "co";
+    module_libs[2].outports[2] = "cout";
+    module_libs[2].io_latency = (float **)malloc(module_libs[2].ins*sizeof(float *));
+    for(i=0; i<module_libs[2].ins; i++)
+        module_libs[2].io_latency[i] = (float *)malloc(module_libs[2].outs*sizeof(float));
+    module_libs[2].io_latency[0][0] = 173.0;
+    module_libs[2].io_latency[0][1] = 156.0;
+    module_libs[2].io_latency[0][2] = 70.0;
+    module_libs[2].io_latency[1][0] = 167.0;
+    module_libs[2].io_latency[1][1] = 157.0;
+    module_libs[2].io_latency[1][2] = 68.0;
+    module_libs[2].io_latency[2][0] = 164.0;
+    module_libs[2].io_latency[2][1] = 152.0;
+    module_libs[2].io_latency[2][2] = 62.0;
+    module_libs[2].io_latency[3][0] = 75.0;
+    module_libs[2].io_latency[3][1] = 70.0;
+    module_libs[2].io_latency[3][2] = -INFINITY;
+    module_libs[2].io_latency[4][0] = 77.0;
+    module_libs[2].io_latency[4][1] = 68.0;
+    module_libs[2].io_latency[4][2] = -INFINITY;
 /* Initialize module library end */
-
-    Initqueue(&Queue1);
-    Initqueue(&Queue2);
 
     nums = init_netlist(net, netnums, width);
     printf("this is input nets list :\n");
@@ -134,9 +168,13 @@ int main(int argc, const char *argv[])
     nums = wallacetree_graph(net, netnums, width);
     printf("the numbers of components: %d\n\n", nums);
 
-    printf("%16s %8s %s\n", "module", "instance", "group");
+    printf("%16s %8s %5s %24s\n", "module", "instance", "group", "input delay");
     for(i=0; i<nums; i++) {
-        printf("%16s %8s %d\n", all_graph[i]->module_name, all_graph[i]->instance_name, all_graph[i]->group);
+        printf("%16s %8s %5d", all_graph[i]->lib->name, all_graph[i]->instance_name, all_graph[i]->group);
+        list_for_from_node(&all_graph[i]->inports, &all_graph[i]->inports, ip_list, in) {
+            printf(" %6.1f", in->delay);
+        }
+        printf("\n");
     }
 
     generate_code(all_graph, nums, net, width);
@@ -146,7 +184,7 @@ int main(int argc, const char *argv[])
 
 void generate_code(struct module_obj *graph[], int nums, struct list_head net[], int width)
 {
-    int i=0, n=0, module, id, start;
+    int i=0, n=0, id, start;
     const char **name;
     struct wire *w;
 
@@ -172,7 +210,7 @@ void generate_code(struct module_obj *graph[], int nums, struct list_head net[],
     for(i=1, start=1, id=1; i<nums+1; start = i, id = graph[i]->group) {
         printf("\n");
         for(; id == graph[i]->group && i<nums+1; i++) {
-            w = list_node((&graph[i]->outports)->next, op_list, w);
+            w = list_next_node(&graph[i]->outports, op_list, w);
             printf("/* %s Output nets */\nwire %s", graph[i]->instance_name, w->name);
             list_for_from_node(&graph[i]->outports, &w->op_list, op_list, w) {
                 if(*(w->name) != '\0')
@@ -181,13 +219,15 @@ void generate_code(struct module_obj *graph[], int nums, struct list_head net[],
             printf(";\n");
         }
         printf("\n/* compress stage %d */\n", id);
-        for(i=start; id == graph[i]->group && i<nums+1; i++, n=0) {
-            printf("%s %s(", graph[i]->module_name, graph[i]->instance_name);
-            sscanf(graph[i]->instance_name, "u%d%_%*d", &module);
-            name = module_info(module);
+        for(i=start; id == graph[i]->group && i<nums+1; i++) {
+            printf("%s %s(", graph[i]->lib->name, graph[i]->instance_name);
+            name = graph[i]->lib->inports;
+            n = 0;
             list_for_from_node(&graph[i]->inports, &graph[i]->inports, ip_list, w) {
                 printf(".%s(%s), ", name[n++], w->name);
             }
+            name = graph[i]->lib->outports;
+            n = 0;
             list_for_from_node(&graph[i]->outports, &graph[i]->outports, op_list, w) {
                 if(IsLast(&w->op_list, &graph[i]->outports))
                     printf(".%s(%s));\n", name[n++], w->name);
@@ -233,15 +273,27 @@ void generate_code(struct module_obj *graph[], int nums, struct list_head net[],
 
 int wallacetree_graph(struct list_head netgroup[], int netnums[], int width)
 {
-    static int components=0, wires=0, stage=0;
-    int i, j, count=0, carry_prse=0, carry_next=0;
+    int components=0, wires=0, stage=0;
+    int i, j, sum_count=0;
     struct module_obj *new_component;
     struct wire *port, *net;
-    List current_queue=&Queue1, next_queue=&Queue2;
+    Queue couts_half, couts_32, couts_42, couts;
+    Queue cins_half, cins_32, cins_42, cins;
+    Queue *Q;
 
+    Initqueue(&couts_half);
+    Initqueue(&couts_32);
+    Initqueue(&couts_42);
+    Initqueue(&couts);
+    Initqueue(&cins_half);
+    Initqueue(&cins_32);
+    Initqueue(&cins_42);
+    Initqueue(&cins);
+
+    Iteration_level:
     printf("compress stage %d: ", stage);
     for(i=width-1; i>=0; i--)
-        printf("%d ", netnums[i]);
+        printf("%4d ", netnums[i]);
     printf("\n");
 
     stage++;
@@ -253,130 +305,142 @@ int wallacetree_graph(struct list_head netgroup[], int netnums[], int width)
     }
 
     for(i=0; i<width; i++) {
-Iteration:
-        if(netnums[i]>=5) {
+        Iteration_column:
+        if(netnums[i]>=5 ||
+        (netnums[i]==4 && (!!cins_half.len || !!cins_32.len || !!cins_42.len)) ||
+        (netnums[i]==3 && (cins_half.len + cins_32.len + cins_42.len)>=2)) {
             new_component = instance_module(COMPRESSOR_4_2, ++components);
             all_graph[components] = new_component;
-            if(IsEmpty_queue(current_queue))
-                j=0;
-            else {
-                net = dequeue(current_queue);
-                net->component_id = components;
-                Insert(&new_component->inports, &net->ip_list);
-                j=1;
+            for (j = 0; j < 2; j++) {
+                if (!!cins_half.len || !!cins_32.len || !!cins_42.len) {
+                    if (!!cins_42.len)
+                        Q = &cins_42;
+                    else if (!!cins_32.len)
+                        Q = &cins_32;
+                    else
+                        Q = &cins_half;
+                    net = dequeue(Q);
+                    Insert(&netgroup[i], &net->n_list);
+                    netnums[i]++;
+                }
             }
-            for(; j<5; j++) {
+            for(j=0; j<5; j++,netnums[i]--) {
                 net = list_next_node(&netgroup[i], n_list, net);
                 net->component_id = components;
                 Delete(&net->n_list);
                 Insert(&new_component->inports, &net->ip_list);
             }
             port = list_next_node(&new_component->outports, op_list, port);
-            net = list_prev_node(&netgroup[i], n_list, net);
-            Insert(&net->n_list, &port->n_list);
+            Insert(netgroup[i].prev, &port->n_list);
             sprintf(port->name, "t_%d", wires++);
             if((i+1)<width) {
                 port = list_next_node(&port->op_list, op_list, port);
-                net = list_prev_node(&netgroup[i+1], n_list, net);
-                Insert(&net->n_list, &port->n_list);
                 sprintf(port->name, "t_%d", wires++);
+                enqueue(&couts, port);
                 port = list_next_node(&port->op_list, op_list, port);
-                enqueue(next_queue, port);
                 sprintf(port->name, "t_%d", wires++);
-                netnums[i+1]++;
+                enqueue(&couts_42, port);
             }
             new_component->group = stage;
-            new_component->indegree = 5;
-            count++;
-            netnums[i] -= 5;
-            carry_next++;
-            goto Iteration;
+            update_out_delay(new_component);
+            sum_count++;
+            goto Iteration_column;
         }
-        else if(netnums[i] >= 3) {
+        else
+        if(netnums[i]+cins_42.len >= 3) {
             new_component = instance_module(COMPRESSOR_3_2, ++components);
             all_graph[components] = new_component;
-            if(IsEmpty_queue(current_queue))
-                j=0;
-            else {
-                net = dequeue(current_queue);
-                net->component_id = components;
-                Insert(&new_component->inports, &net->ip_list);
-                j=1;
+            Q = &couts_32;
+            for (j = 0; j < 3; j++) {
+                if(!!cins_42.len) {
+                    Q = &cins_42;
+                    net = dequeue(Q);
+                    Insert(&netgroup[i], &net->n_list);
+                    netnums[i]++;
+                    Q = &couts;
+                }
             }
-            for(; j<3; j++) {
+            for(j=0; j<3; j++) {
                 net = list_next_node(&netgroup[i], n_list, net);
-                net->component_id = components;
                 Delete(&net->n_list);
+                netnums[i]--;
+                net->component_id = components;
                 Insert(&new_component->inports, &net->ip_list);
             }
             port = list_next_node(&new_component->outports, op_list, port);
-            net = list_prev_node(&netgroup[i], n_list, net);
-            Insert(&net->n_list, &port->n_list);
+            Insert(netgroup[i].prev, &port->n_list);
             sprintf(port->name, "t_%d", wires++);
             if((i+1)<width) {
                 port = list_next_node(&port->op_list, op_list, port);
-                net = list_prev_node(&netgroup[i+1], n_list, net);
-                Insert(&net->n_list, &port->n_list);
                 sprintf(port->name, "t_%d", wires++);
+                enqueue(Q, port);
             }
             new_component->group = stage;
-            new_component->indegree = 3;
-            count++;
-            netnums[i] -= 3;
-            carry_next++;
-            goto Iteration;
+            update_out_delay(new_component);
+            sum_count++;
+            goto Iteration_column;
         }
-        else if(netnums[i] == 2) {
+        else if(netnums[i]+cins_42.len >= 2) {
             new_component = instance_module(HALF_ADDER, ++components);
             all_graph[components] = new_component;
-            if(IsEmpty_queue(current_queue))
-                j=0;
-            else {
-                net = dequeue(current_queue);
-                net->component_id = components;
-                Insert(&new_component->inports, &net->ip_list);
-                j=1;
+            Q = &couts_half;
+            for (j = 0; j < 2; j++) {
+                if(!!cins_42.len) {
+                    Q = &cins_42;
+                    net = dequeue(Q);
+                    Insert(&netgroup[i], &net->n_list);
+                    netnums[i]++;
+                    Q = &couts;
+                }
             }
-            for(; j<2; j++) {
+            for(j=0; j<2; j++,netnums[i]--) {
                 net = list_next_node(&netgroup[i], n_list, net);
-                net->component_id = components;
                 Delete(&net->n_list);
+                net->component_id = components;
                 Insert(&new_component->inports, &net->ip_list);
             }
             port = list_next_node(&new_component->outports, op_list, port);
-            net = list_prev_node(&netgroup[i], n_list, net);
-            Insert(&net->n_list, &port->n_list);
+            Insert(netgroup[i].prev, &port->n_list);
             sprintf(port->name, "t_%d", wires++);
             if((i+1)<width) {
                 port = list_next_node(&port->op_list, op_list, port);
-                net = list_prev_node(&netgroup[i+1], n_list, net);
-                Insert(&net->n_list, &port->n_list);
                 sprintf(port->name, "t_%d", wires++);
+                enqueue(Q, port);
             }
             new_component->group = stage;
-            new_component->indegree = 2;
-            count++;
-            netnums[i] -= 2;
-            carry_next++;
-            goto Iteration;
+            update_out_delay(new_component);
+            sum_count++;
+            goto Iteration_column;
         }
         else {
-            for(; !IsEmpty_queue(current_queue);) {
-                port = dequeue(current_queue);
-                net = list_prev_node(&netgroup[i+1], n_list, net);
-                Insert(&net->n_list, &port->n_list);
+            for(; !!cins_half.len || !!cins_32.len || !!cins_42.len || !!cins.len;) {
+                if(!!cins_half.len)
+                    Q = &cins_half;
+                else if(!!cins_32.len)
+                    Q = &cins_32;
+                else if(!!cins_42.len)
+                    Q = &cins_42;
+                else if(!!cins.len)
+                    Q = &cins;
+                else
+                    Q = NULL;
+                port = dequeue(Q);
+                Insert(netgroup[i].prev, &port->n_list);
+                netnums[i]++;
             }
-            List tmp = current_queue;
-            current_queue = next_queue;
-            next_queue = tmp;
-            netnums[i] += carry_prse + count;
-            count = 0;
-            carry_prse = carry_next;
-            carry_next = 0;
+            for(; !!couts_half.len;)
+                enqueue(&cins_half, dequeue(&couts_half));
+            for(; !!couts_32.len;)
+                enqueue(&cins_32, dequeue(&couts_32));
+            for(; !!couts_42.len;)
+                enqueue(&cins_42, dequeue(&couts_42));
+            for(; !!couts.len;)
+                enqueue(&cins, dequeue(&couts));
+            netnums[i] += sum_count;
+            sum_count = 0;
         }
     }
-
-    return wallacetree_graph(netgroup, netnums, width);
+    goto Iteration_level;
 }
 
 struct module_obj *init_top(struct list_head net[], int width, int type)
@@ -386,12 +450,12 @@ struct module_obj *init_top(struct list_head net[], int width, int type)
     struct wire *p, *tmp;
     struct module_obj *top = malloc(sizeof(struct module_obj));
 
-    top->module_name = "TOP";
+    top->lib = &module_libs[4];
+    top->lib->name = "TOP";
     switch(type) {
     case INPUTS :
         top->id = 0;
         top->instance_name = "Inputs";
-        top->indegree = 0;
         ListInit(&top->inports);
         ListInit(&top->outports);
         for(i=0, l=&top->outports; i<width; i++) {
@@ -416,7 +480,6 @@ struct module_obj *init_top(struct list_head net[], int width, int type)
                 n++;
             }
         }
-        top->indegree = n;
         break;
     default: return NULL;
     }
@@ -435,6 +498,7 @@ int init_netlist(struct list_head net[], int netnums[], int width)
             w = malloc(sizeof(struct wire));
             w->name = malloc(MAX_NAME_LEN);
             sprintf(w->name, "s_%d_%d", i, j);
+            w->delay = 0.0;
             Insert(l, &w->n_list);
         }
     }
@@ -443,24 +507,9 @@ int init_netlist(struct list_head net[], int netnums[], int width)
 
 struct module_obj *instance_module(int module, int component_id)
 {
-    int out_nums;
     struct module_obj *obj = malloc(sizeof(struct module_obj));
 
-    switch (module) {
-    case HALF_ADDER :
-        obj->module_name = m_0.name;
-        out_nums = 2;
-        break;
-    case COMPRESSOR_3_2 :
-        obj->module_name = m_1.name;
-        out_nums = 2;
-        break;
-    case COMPRESSOR_4_2 :
-        obj->module_name = m_2.name;
-        out_nums = 3;
-        break;
-    default : return NULL;
-    }
+    obj->lib = &module_libs[module];
     obj->id = component_id;
     obj->instance_name = malloc(MAX_NAME_LEN);
     sprintf(obj->instance_name, "u%d_%d", module, component_id);
@@ -472,11 +521,12 @@ struct module_obj *instance_module(int module, int component_id)
     ListInit(&(obj->inports));
 
     ListInit(&(obj->outports));
-    for(i=0, l=&(obj->outports); i<out_nums; i++) {
+    for(i=0, l=&(obj->outports); i<module_libs[module].outs; i++) {
         p = malloc(sizeof(struct wire));
         p->component_id = -1;
         p->name = malloc(MAX_NAME_LEN);
         *(p->name) = '\0';
+        p->delay = 0.0;
         Insert(l, &(p->op_list));
         l = &(p->op_list);
     }
@@ -484,32 +534,47 @@ struct module_obj *instance_module(int module, int component_id)
     return obj;
 }
 
-void Initqueue(struct list_head *P)
+void update_out_delay(struct module_obj *obj)
 {
-    ListInit(P);
-}
-int IsEmpty_queue(struct list_head *listhead)
-{
-    return IsEmpty(listhead);
-}
-void enqueue(struct list_head *listhead, struct wire *entry)
-{
-    struct wire *p;
-    if(IsEmpty(listhead))
-        Insert(listhead, &entry->n_list);
-    else {
-        p = list_prev_node(listhead, n_list, p);
-        Insert(&p->n_list, &entry->n_list);
+    int i=0, o=0;
+    struct wire *in, *out;
+
+    list_for_from_node(&obj->outports, &obj->outports, op_list, out) {
+        i = 0;
+        list_for_from_node(&obj->inports, &obj->inports, ip_list, in) {
+            if(out->delay < in->delay+obj->lib->io_latency[i][o])
+                out->delay = in->delay+obj->lib->io_latency[i][o];
+            i++;
+        }
+        o++;
     }
 }
-struct wire *dequeue(struct list_head *listhead)
+
+void Initqueue(Queue *Q)
+{
+    ListInit(&(Q->head));
+    Q->len = 0;
+}
+void enqueue(Queue *Q, struct wire *entry)
 {
     struct wire *p;
-    if(IsEmpty(listhead))
+    if(IsEmpty(&(Q->head)))
+        Insert(&(Q->head), &entry->n_list);
+    else {
+        p = list_prev_node(&(Q->head), n_list, p);
+        Insert(&p->n_list, &entry->n_list);
+    }
+    Q->len++;
+}
+struct wire *dequeue(Queue *Q)
+{
+    struct wire *p;
+    if(IsEmpty(&(Q->head)))
         return NULL;
     else {
-        p = list_next_node(listhead, n_list, p);
+        p = list_next_node(&(Q->head), n_list, p);
         Delete(&p->n_list);
+        Q->len--;
         return p;
     }
 }
